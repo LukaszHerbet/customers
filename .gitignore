@@ -1,0 +1,4 @@
+# exclude files in target directory and not needed IDE related files
+target/*
+.idea/*
+*.iml
