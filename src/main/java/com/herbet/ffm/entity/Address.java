@@ -1,5 +1,6 @@
 package com.herbet.ffm.entity;
 
+import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.lang3.builder.ToStringBuilder;
 
 import javax.persistence.Entity;
@@ -56,5 +57,10 @@ public class Address {
     public String toString() {
         return new ToStringBuilder(this).append("id", id).append("street", street).append("postcode", postcode)
                 .toString();
+    }
+
+    public boolean isSameLocation(Address addressToCompare) {
+        return StringUtils.equals(this.getStreet(), addressToCompare.getStreet()) && StringUtils.equals(
+                this.getPostcode(), addressToCompare.getPostcode());
     }
 }

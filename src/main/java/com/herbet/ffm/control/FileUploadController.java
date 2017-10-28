@@ -1,22 +1,25 @@
 package com.herbet.ffm.control;
 
-import org.apache.commons.lang3.text.StrBuilder;
+import com.herbet.ffm.exception.ApplicationException;
+import com.herbet.ffm.service.UploadCustomersService;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Controller;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
-import org.springframework.web.servlet.mvc.support.RedirectAttributes;
 
-import java.io.BufferedReader;
 import java.io.IOException;
-import java.io.InputStreamReader;
+import java.text.ParseException;
 import java.util.logging.Logger;
 
 @Controller
 public class FileUploadController {
 
     Logger logger = Logger.getLogger(FileUploadController.class.getName());
+
+    @Autowired
+    private UploadCustomersService uploadCustomersService;
 
     @GetMapping("/")
     public String getUploadForm() {
@@ -25,15 +28,12 @@ public class FileUploadController {
     }
 
     @PostMapping("/")
-    public String handleFileUpload(@RequestParam("file") MultipartFile file, RedirectAttributes redirectAttributes)
-            throws IOException {
+    public String handleFileUpload(@RequestParam("file") MultipartFile file)
+            throws ParseException, IOException, ApplicationException {
 
-        StrBuilder messageBuilder = new StrBuilder();
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
-            br.lines().forEach(line -> messageBuilder.append(line).appendNewLine());
-        }
-        redirectAttributes.addFlashAttribute("message", messageBuilder.toString());
-        return "redirect:/";
+        uploadCustomersService.uploadCustomersFromFile(file);
+
+        return "redirect:/customers";
     }
 
 }

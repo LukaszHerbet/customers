@@ -23,4 +23,12 @@ public class AddressCrudService {
         return repository.save(address);
     }
 
+    public Address findSameAddress(Address address) {
+        for (Address existingAddress : findAll()) {
+            if (address.isSameLocation(existingAddress)) {
+                return existingAddress;
+            }
+        }
+        return address;
+    }
 }
