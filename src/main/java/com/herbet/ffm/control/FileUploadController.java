@@ -10,7 +10,6 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
-import java.text.ParseException;
 import java.util.logging.Logger;
 
 @Controller
@@ -28,12 +27,10 @@ public class FileUploadController {
     }
 
     @PostMapping("/")
-    public String handleFileUpload(@RequestParam("file") MultipartFile file)
-            throws ParseException, IOException, ApplicationException {
+    public String handleFileUpload(@RequestParam("file") MultipartFile file) throws IOException, ApplicationException {
 
         uploadCustomersService.uploadCustomersFromFile(file);
 
         return "redirect:/customers";
     }
-
 }

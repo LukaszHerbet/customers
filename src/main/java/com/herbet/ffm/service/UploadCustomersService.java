@@ -29,6 +29,9 @@ public class UploadCustomersService {
     @Autowired
     private CustomerCrudService customerCrudService;
 
+    @Value("${input.file.encoding}")
+    private String inputfileEncoding;
+
     @Value("${csv.format.date}")
     private String csvDateFormat;
 
@@ -101,7 +104,7 @@ public class UploadCustomersService {
     private List<String> extractLines(MultipartFile file) throws IOException {
         LinkedList<String> fileLines = new LinkedList<>();
 
-        try (BufferedReader br = new BufferedReader(new InputStreamReader(file.getInputStream()))) {
+        try (BufferedReader br = new BufferedReader(new InputStreamReader(file.getInputStream(), inputfileEncoding))) {
             br.lines().forEach(fileLines::add);
         }
 
