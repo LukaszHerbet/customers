@@ -8,6 +8,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.BufferedReader;
@@ -76,6 +77,7 @@ public class UploadCustomersService {
 
     Logger logger = Logger.getLogger(UploadCustomersService.class.getName());
 
+    @Transactional(rollbackFor = Exception.class)
     public void uploadCustomersFromFile(MultipartFile file) throws IOException, ApplicationException {
 
         if (file.isEmpty()) {
@@ -167,7 +169,7 @@ public class UploadCustomersService {
 
     }
 
-    public void createCustomerFromCsvLine(String csvFileLine, String fileName) throws ApplicationException {
+    private void createCustomerFromCsvLine(String csvFileLine, String fileName) throws ApplicationException {
         String[] quotaSplitted = StringUtils.split(csvFileLine, '"');
 
         if (quotaSplitted.length < 2) {
