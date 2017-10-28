@@ -14,9 +14,9 @@ public class Address {
     @GeneratedValue(strategy = GenerationType.AUTO)
     private long id;
 
-    private String postcode;
-
     private String street;
+
+    private String postcode;
 
     public Address() {
         super();

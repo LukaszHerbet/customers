@@ -37,11 +37,11 @@ public class Application implements CommandLineRunner {
         SimpleDateFormat format = new SimpleDateFormat("yyyy-MM-dd");
 
         Customer customer1 = new Customer("Lukasz", "Herbet", address1, "089 4777333", 1000.00,
-                                          new Date(format.parse("1985-09-26").getTime()));
+                                          new Date(format.parse("1985-09-26").getTime()), "sample");
         customerCrudService.save(customer1);
 
         Customer customer2 = new Customer("Jan", "Kowalski", address2, "089 9788795", 112321.33,
-                                          new Date(format.parse("1980-01-05").getTime()));
+                                          new Date(format.parse("1980-01-05").getTime()), "sample");
         customerCrudService.save(customer2);
     }
 

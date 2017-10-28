@@ -14,29 +14,31 @@ import javax.persistence.ManyToOne;
 @Entity
 public class Customer {
 
-    @ManyToOne
-    private Address address;
-
-    private Date birthday;
-
-    private double creditLimit;
-
-    private String firstName;
-
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO)
     private long id;
 
+    private String firstName;
+
     private String lastName;
 
+    @ManyToOne
+    private Address address;
+
     private String phone;
+
+    private double creditLimit;
+
+    private Date birthday;
+
+    private String source;
 
     public Customer() {
         super();
     }
 
-    public Customer(String firstName, String lastName, Address address, String phone, double creditLimit,
-                    Date birthday) {
+    public Customer(String firstName, String lastName, Address address, String phone, double creditLimit, Date birthday,
+                    String source) {
         super();
         this.firstName = firstName;
         this.lastName = lastName;
@@ -44,6 +46,7 @@ public class Customer {
         this.phone = phone;
         this.creditLimit = creditLimit;
         this.birthday = birthday;
+        this.source = source;
     }
 
     public long getId() {
@@ -100,6 +103,14 @@ public class Customer {
 
     public void setBirthday(Date birthday) {
         this.birthday = birthday;
+    }
+
+    public String getSource() {
+        return source;
+    }
+
+    public void setSource(final String source) {
+        this.source = source;
     }
 
     @Override
