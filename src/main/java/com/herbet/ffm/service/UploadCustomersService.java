@@ -32,9 +32,48 @@ public class UploadCustomersService {
     @Value("${csv.format.date}")
     private String csvDateFormat;
 
+    @Value("${prn.format.date}")
+    private String prnDateFormat;
+
+    @Value("${prn.format.name.start}")
+    private Integer prnNameStart;
+
+    @Value("${prn.format.name.end}")
+    private Integer prnNameEnd;
+
+    @Value("${prn.format.address.start}")
+    private Integer prnAddressStart;
+
+    @Value("${prn.format.address.end}")
+    private Integer prnAddressEnd;
+
+    @Value("${prn.format.postcode.start}")
+    private Integer prnPostcodeStart;
+
+    @Value("${prn.format.postcode.end}")
+    private Integer prnPostcodeEnd;
+
+    @Value("${prn.format.phone.start}")
+    private Integer prnPhoneStart;
+
+    @Value("${prn.format.phone.end}")
+    private Integer prnPhoneEnd;
+
+    @Value("${prn.format.credit.limit.start}")
+    private Integer prnCreditLimitStart;
+
+    @Value("${prn.format.credit.limit.end}")
+    private Integer prnCreditLimitEnd;
+
+    @Value("${prn.format.birthday.start}")
+    private Integer prnBirthdayStart;
+
+    @Value("${prn.format.birthday.end}")
+    private Integer prnBirthdayEnd;
+
     Logger logger = Logger.getLogger(UploadCustomersService.class.getName());
 
-    public void uploadCustomersFromFile(MultipartFile file) throws IOException, ApplicationException, ParseException {
+    public void uploadCustomersFromFile(MultipartFile file) throws IOException, ApplicationException {
 
         if (file.isEmpty()) {
             throw new ApplicationException("The uploaded file is empty or no file was chosen.");
@@ -71,32 +110,68 @@ public class UploadCustomersService {
         return fileLines;
     }
 
-    private void uploadCustomersFromCsv(List<String> csvFileLines, String fileName)
-            throws ParseException, ApplicationException {
+    private void uploadCustomersFromCsv(List<String> csvFileLines, String fileName) throws ApplicationException {
         for (String line : csvFileLines) {
             createCustomerFromCsvLine(line, fileName);
         }
     }
 
-    private void uploadCustomersFromPrn(List<String> prnFileLines, String fileName) {
-        // to be implemented
+    private void uploadCustomersFromPrn(List<String> prnFileLines, String fileName) throws ApplicationException {
+        for (String line : prnFileLines) {
+            createCustomerFromPrnLine(line, fileName);
+        }
     }
 
-    public void createCustomerFromCsvLine(String csvFileLine, String fileName)
-            throws ApplicationException, ParseException {
+    private void createCustomerFromPrnLine(String prnFileLine, String fileName) throws ApplicationException {
+
+        String nameString = StringUtils.substring(prnFileLine, prnNameStart, prnNameEnd);
+        String[] names = extractNames(nameString);
+        String addressString = StringUtils.substring(prnFileLine, prnAddressStart, prnAddressEnd);
+        String postcode = StringUtils.substring(prnFileLine, prnPostcodeStart, prnPostcodeEnd);
+        String phone = StringUtils.substring(prnFileLine, prnPhoneStart, prnPhoneEnd);
+        String creditLimit = StringUtils.substring(prnFileLine, prnCreditLimitStart, prnCreditLimitEnd);
+        String birthday = StringUtils.substring(prnFileLine, prnBirthdayStart, prnBirthdayEnd);
+
+        for (String field : ArrayUtils.addAll(names, addressString, postcode, phone, creditLimit, birthday)) {
+            if (field.trim().length() == 0) {
+                throw new ApplicationException("Following line has incorrect format (all fields are mandatory and " +
+                                                       "can not be empty or spaces): " + prnFileLine);
+            }
+        }
+
+        SimpleDateFormat format = new SimpleDateFormat(prnDateFormat);
+
+        Address address = new Address(addressString.trim(), postcode.trim());
+        address = addressCrudService.findSameAddress(address);
+        addressCrudService.save(address);
+
+        Customer customer = new Customer();
+
+        customer.setFirstName(names[1].trim());
+        customer.setLastName(names[0].trim());
+        customer.setAddress(address);
+        customer.setPhone(phone.trim());
+        customer.setCreditLimit(extractCreditLimitFromPrn(creditLimit));
+        try {
+            customer.setBirthday(new Date(format.parse(birthday.trim()).getTime()));
+        } catch (ParseException pe) {
+            throw new ApplicationException(
+                    "Column Birthday has incorrect format (should be " + csvDateFormat + "): " + birthday.trim(), pe);
+        }
+
+        customer.setSource(fileName);
+        customerCrudService.save(customer);
+
+    }
+
+    public void createCustomerFromCsvLine(String csvFileLine, String fileName) throws ApplicationException {
         String[] quotaSplitted = StringUtils.split(csvFileLine, '"');
 
         if (quotaSplitted.length < 2) {
             throw new ApplicationException("Following line has incorrect format (not enough fields): " + csvFileLine);
         }
 
-        String[] names = StringUtils.split(quotaSplitted[0], ',');
-
-        if (names.length < 2) {
-            throw new ApplicationException(
-                    "Column Name has incorrect format (should be \"Lastname, Firstname\"): \"" + quotaSplitted[0] +
-                            "\"");
-        }
+        String[] names = extractNames(quotaSplitted[0]);
 
         String[] fields = StringUtils.split(quotaSplitted[1], ',');
 
@@ -123,10 +198,49 @@ public class UploadCustomersService {
         customer.setLastName(names[0].trim());
         customer.setAddress(address);
         customer.setPhone(fields[2].trim());
-        customer.setCreditLimit(Double.parseDouble(fields[3].trim()));
-        customer.setBirthday(new Date(format.parse(fields[4].trim()).getTime()));
-        customer.setSource(fileName);
+        try {
+            customer.setCreditLimit(Double.parseDouble(fields[3].trim()));
+        } catch (NumberFormatException nfe) {
+            throw new ApplicationException(
+                    "Column Credit Limit has incorrect format (can't be parsed to double): " + fields[3].trim(), nfe);
+        }
+        try {
+            customer.setBirthday(new Date(format.parse(fields[4].trim()).getTime()));
+        } catch (ParseException pe) {
+            throw new ApplicationException(
+                    "Column Birthday has incorrect format (should be " + csvDateFormat + "): " + fields[4].trim(), pe);
+        }
 
+        customer.setSource(fileName);
         customerCrudService.save(customer);
+    }
+
+    private String[] extractNames(String nameString) throws ApplicationException {
+        String[] names = StringUtils.split(nameString, ',');
+
+        if (names.length < 2) {
+            throw new ApplicationException(
+                    "Column Name has incorrect format (should be \"Lastname, Firstname\"): \"" + nameString + "\"");
+        }
+        return names;
+    }
+
+    private double extractCreditLimitFromPrn(String creditLimitString) throws ApplicationException {
+        double creditLimit;
+
+        String adjustedCreditLimitString = creditLimitString.trim();
+
+        if (adjustedCreditLimitString.length() >= 3) {
+            adjustedCreditLimitString = new StringBuilder(adjustedCreditLimitString).insert(
+                    adjustedCreditLimitString.length() - 2, '.').toString();
+        }
+
+        try {
+            creditLimit = Double.parseDouble(adjustedCreditLimitString);
+        } catch (NumberFormatException nfe) {
+            throw new ApplicationException(
+                    "Column Credit Limit has incorrect format (can't be parsed to double): " + creditLimitString, nfe);
+        }
+        return creditLimit;
     }
 }
