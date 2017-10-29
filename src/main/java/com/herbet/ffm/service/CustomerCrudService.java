@@ -23,4 +23,11 @@ public class CustomerCrudService {
         return repository.save(customer);
     }
 
+    public long count() {
+        return repository.count();
+    }
+
+    public void deleteAll() {
+        repository.deleteAll();
+    }
 }

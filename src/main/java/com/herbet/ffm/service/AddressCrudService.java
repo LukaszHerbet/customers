@@ -23,6 +23,14 @@ public class AddressCrudService {
         return repository.save(address);
     }
 
+    public long count() {
+        return repository.count();
+    }
+
+    public void deleteAll() {
+        repository.deleteAll();
+    }
+
     public Address findSameAddress(Address address) {
         for (Address existingAddress : findAll()) {
             if (address.isSameLocation(existingAddress)) {
