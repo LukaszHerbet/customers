@@ -77,6 +77,16 @@ public class UploadCustomersService {
 
     Logger logger = Logger.getLogger(UploadCustomersService.class.getName());
 
+    /**
+     * Loads customers data from data file dent from upload form. All necessary checks are performed for loaded
+     * customers.
+     * File is completetly loaded or not loaded at all. Every exception thrown during execution causes transation
+     * to be rolled back.
+     *
+     * @param file file containing customer data sent from upload form
+     * @throws IOException
+     * @throws ApplicationException
+     */
     @Transactional(rollbackFor = Exception.class)
     public void uploadCustomersFromFile(MultipartFile file) throws IOException, ApplicationException {
 
@@ -85,24 +95,33 @@ public class UploadCustomersService {
         }
 
         String fileName = file.getOriginalFilename();
-        String fileExtention = fileName.substring(fileName.lastIndexOf('.') + 1);
+        String fileExtension = fileName.substring(fileName.lastIndexOf('.') + 1);
 
-        if (!(StringUtils.equals(fileExtention.toLowerCase(), "csv") || StringUtils.equals(fileExtention.toLowerCase(),
+        // throw exception if extension is other that csv or prn
+        if (!(StringUtils.equals(fileExtension.toLowerCase(), "csv") || StringUtils.equals(fileExtension.toLowerCase(),
                                                                                            "prn"))) {
-            throw new ApplicationException("Uploaded file extention: '." + fileExtention + "' is not supported.");
+            throw new ApplicationException("Uploaded file extention: '." + fileExtension + "' is not supported.");
         }
 
+        // extract all lines of file containing customer data (header is ignored)
         List<String> fileLines = extractLines(file);
 
-        if (StringUtils.equals(fileExtention.toLowerCase(), "csv")) {
+        if (StringUtils.equals(fileExtension.toLowerCase(), "csv")) {
             uploadCustomersFromCsv(fileLines, fileName);
         }
 
-        if (StringUtils.equals(fileExtention.toLowerCase(), "prn")) {
+        if (StringUtils.equals(fileExtension.toLowerCase(), "prn")) {
             uploadCustomersFromPrn(fileLines, fileName);
         }
     }
 
+    /**
+     * Extracts all lines except header from file containing customer
+     *
+     * @param file file containing customer data
+     * @return list containing lines with customer data
+     * @throws IOException
+     */
     private List<String> extractLines(MultipartFile file) throws IOException {
         LinkedList<String> fileLines = new LinkedList<>();
 
@@ -110,25 +129,45 @@ public class UploadCustomersService {
             br.lines().forEach(fileLines::add);
         }
 
+        // remove first line containing header
         fileLines.removeFirst();
 
         return fileLines;
     }
 
+    /**
+     * Creates customers from list containing lines with customer data in csv format and persist them.
+     * @param csvFileLines list containing lines with customer data in csv format
+     * @param fileName name of related csv file
+     * @throws ApplicationException
+     */
     private void uploadCustomersFromCsv(List<String> csvFileLines, String fileName) throws ApplicationException {
         for (String line : csvFileLines) {
             createCustomerFromCsvLine(line, fileName);
         }
     }
 
+    /**
+     * Creates customers from list containing lines with customer data in prn format and persist them.
+     * @param prnFileLines list containing lines with customer data in prn format
+     * @param fileName name of related csv file
+     * @throws ApplicationException
+     */
     private void uploadCustomersFromPrn(List<String> prnFileLines, String fileName) throws ApplicationException {
         for (String line : prnFileLines) {
             createCustomerFromPrnLine(line, fileName);
         }
     }
 
+    /**
+     * Creates customer from line with customer data in prn format and persist them.
+     * @param prnFileLine line with customer data in prn format
+     * @param fileName name of related prn file
+     * @throws ApplicationException
+     */
     private void createCustomerFromPrnLine(String prnFileLine, String fileName) throws ApplicationException {
 
+        // extract all fields from line using properties defined in application.properties
         String nameString = StringUtils.substring(prnFileLine, prnNameStart, prnNameEnd);
         String[] names = extractNames(nameString);
         String addressString = StringUtils.substring(prnFileLine, prnAddressStart, prnAddressEnd);
@@ -137,6 +176,7 @@ public class UploadCustomersService {
         String creditLimit = StringUtils.substring(prnFileLine, prnCreditLimitStart, prnCreditLimitEnd);
         String birthday = StringUtils.substring(prnFileLine, prnBirthdayStart, prnBirthdayEnd);
 
+        // for all fields check if are not empty
         for (String field : ArrayUtils.addAll(names, addressString, postcode, phone, creditLimit, birthday)) {
             if (field.trim().length() == 0) {
                 throw new ApplicationException("Following line has incorrect format (all fields are mandatory and " +
@@ -145,19 +185,25 @@ public class UploadCustomersService {
         }
 
         SimpleDateFormat format = new SimpleDateFormat(prnDateFormat);
+        // not accept not existing dates line 29-02-2015
         format.setLenient(false);
 
+        // create address from line fields
         Address address = new Address(addressString.trim(), postcode.trim());
+        // ensure that no additional address is saved in DB if address with same location already exist in DB
         address = addressCrudService.findSameAddress(address);
         addressCrudService.save(address);
 
+        // create address from line fields
         Customer customer = new Customer();
 
         customer.setFirstName(names[1].trim());
         customer.setLastName(names[0].trim());
         customer.setAddress(address);
         customer.setPhone(phone.trim());
+        // extract and set double value of Credit Limit
         customer.setCreditLimit(extractCreditLimitFromPrn(creditLimit));
+        // extract and set Birthday
         try {
             customer.setBirthday(new Date(format.parse(birthday.trim()).getTime()));
         } catch (ParseException pe) {
@@ -165,26 +211,42 @@ public class UploadCustomersService {
                     "Column Birthday has incorrect format (should be " + csvDateFormat + "): " + birthday.trim(), pe);
         }
 
+        // set source to mark from which file customer was loaded
         customer.setSource(fileName);
+
+        // save customer in db
         customerCrudService.save(customer);
 
     }
 
+    /**
+     * Creates customer from line with customer data in csv format and persist them.
+     * @param csvFileLine line with customer data in csv format
+     * @param fileName name of related csv file
+     * @throws ApplicationException
+     */
     private void createCustomerFromCsvLine(String csvFileLine, String fileName) throws ApplicationException {
+
+        // extract Name column using quotation
         String[] quotaSplitted = StringUtils.split(csvFileLine, '"');
 
+        // check if there are two columns after split
         if (quotaSplitted.length < 2) {
             throw new ApplicationException("Following line has incorrect format (not enough fields): " + csvFileLine);
         }
 
+        // extract Lastname and Firstname
         String[] names = extractNames(quotaSplitted[0]);
 
+        // extract columns other than Name
         String[] fields = StringUtils.split(quotaSplitted[1], ',');
 
+        // check if number of columns is correct
         if (fields.length < 5) {
             throw new ApplicationException("Following line has incorrect format (not enough fields): " + csvFileLine);
         }
 
+        // for all fields check if are not empty
         for (String field : ArrayUtils.addAll(names, fields)) {
             if (field.trim().length() == 0) {
                 throw new ApplicationException("Following line has incorrect format (all fields are mandatory and " +
@@ -193,24 +255,30 @@ public class UploadCustomersService {
         }
 
         SimpleDateFormat format = new SimpleDateFormat(csvDateFormat);
+        // not accept not existing dates line 29-02-2015
         format.setLenient(false);
 
+        // create address from line fields
         Address address = new Address(fields[0].trim(), fields[1].trim());
+        // ensure that no additional address is saved in DB if address with same location already exist in DB
         address = addressCrudService.findSameAddress(address);
         addressCrudService.save(address);
 
         Customer customer = new Customer();
 
+        // create address from line fields
         customer.setFirstName(names[1].trim());
         customer.setLastName(names[0].trim());
         customer.setAddress(address);
         customer.setPhone(fields[2].trim());
+        // extract and set double value of Credit Limit
         try {
             customer.setCreditLimit(Double.parseDouble(fields[3].trim()));
         } catch (NumberFormatException nfe) {
             throw new ApplicationException(
                     "Column Credit Limit has incorrect format (can't be parsed to double): " + fields[3].trim(), nfe);
         }
+        // extract and set Birthday
         try {
             customer.setBirthday(new Date(format.parse(fields[4].trim()).getTime()));
         } catch (ParseException pe) {
@@ -218,10 +286,21 @@ public class UploadCustomersService {
                     "Column Birthday has incorrect format (should be " + csvDateFormat + "): " + fields[4].trim(), pe);
         }
 
+        // set source to mark from which file customer was loaded
         customer.setSource(fileName);
+
+        // save customer in db
         customerCrudService.save(customer);
     }
 
+    /**
+     * Extracts Lastname and Firstname from string in format "Lastname, Firstname" and return them as array of String.
+     * First element in array is Lastname, second is Firstname. If format of input param is not correct
+     * ApplicationException is thrown with dedicated message.
+     *
+     * @param nameString string in format "Lastname, Firstname"
+     * @throws ApplicationException
+     */
     private String[] extractNames(String nameString) throws ApplicationException {
         String[] names = StringUtils.split(nameString, ',');
 
@@ -232,6 +311,14 @@ public class UploadCustomersService {
         return names;
     }
 
+    /**
+     * Extracts double value of Credit Limit delivered as String.
+     * If creditLimitString is longer or equal 3 then last 3 characters are treated as fractional part.
+     * If creditLimitString is smaller that 3 then no fractional part is used.
+     * If format of input param is not correct ApplicationException is thrown with dedicated message.
+     * @param creditLimitString prn format string representing Credit Limit
+     * @throws ApplicationException
+     */
     private double extractCreditLimitFromPrn(String creditLimitString) throws ApplicationException {
         double creditLimit;
 

@@ -28,6 +28,8 @@ public class Application implements CommandLineRunner {
     @Override
     public void run(String... args) throws Exception {
 
+        // adding sample data to be displayed in application
+
         Address address1 = new Address("Straussa 1/15", "50-129");
         addressCrudService.save(address1);
 

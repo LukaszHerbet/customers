@@ -5,6 +5,9 @@ import com.herbet.ffm.repository.AddressRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+/**
+ * Service used for persisting Address objects. Additional layer between DAO and application logic.
+ */
 @Service
 public class AddressCrudService {
 
@@ -31,7 +34,15 @@ public class AddressCrudService {
         repository.deleteAll();
     }
 
+    /**
+     * Check if addres with the same location already exist in DB.
+     *
+     * @param address address to check
+     * @return if address with the same location that exist in DB then address from DB; ; address param otherwise.
+     */
     public Address findSameAddress(Address address) {
+
+        // TODO in production application it should be reimplemented to use DB query and not extract all orders
         for (Address existingAddress : findAll()) {
             if (address.isSameLocation(existingAddress)) {
                 return existingAddress;

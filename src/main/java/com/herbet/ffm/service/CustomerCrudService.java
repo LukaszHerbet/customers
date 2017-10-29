@@ -5,6 +5,9 @@ import com.herbet.ffm.repository.CustomerRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+/**
+ * Service used for persisting Customer objects. Additional layer between DAO and application logic.
+ */
 @Service
 public class CustomerCrudService {
 

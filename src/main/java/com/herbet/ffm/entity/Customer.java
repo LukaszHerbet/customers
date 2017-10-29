@@ -11,6 +11,9 @@ import javax.persistence.GenerationType;
 import javax.persistence.Id;
 import javax.persistence.ManyToOne;
 
+/**
+ * Entity representing customer.
+ */
 @Entity
 public class Customer {
 
@@ -31,6 +34,7 @@ public class Customer {
 
     private Date birthday;
 
+    // source from which customer was created
     private String source;
 
     public Customer() {
