@@ -145,6 +145,7 @@ public class UploadCustomersService {
         }
 
         SimpleDateFormat format = new SimpleDateFormat(prnDateFormat);
+        format.setLenient(false);
 
         Address address = new Address(addressString.trim(), postcode.trim());
         address = addressCrudService.findSameAddress(address);
@@ -192,6 +193,7 @@ public class UploadCustomersService {
         }
 
         SimpleDateFormat format = new SimpleDateFormat(csvDateFormat);
+        format.setLenient(false);
 
         Address address = new Address(fields[0].trim(), fields[1].trim());
         address = addressCrudService.findSameAddress(address);
